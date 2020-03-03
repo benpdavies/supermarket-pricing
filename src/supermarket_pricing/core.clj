@@ -7,21 +7,36 @@
   (println "Hello, World!"))
 
 (def prices
-  {"beans" 0.5
-   "coke"  0.7})
+  {:beans  {:unit "item"
+            :price-per-unit 0.50}
+   :coke   {:unit "item"
+            :price-per-unit 0.70}
+   :onions {:unit "kg"
+            :price-per-unit 1.99}})
 
-(def example-receipt
-  [{:name "beans" :quantity 3} {:name "coke" :quantity 1}])
+(def eg-basket
+  {:beans  3
+   :coke   1
+   :onions 0.2})
 
-(defn create-receipt
-  [no-beans no-coke]
-  [{:name "beans" :quantity no-beans} {:name "coke" :quantity no-coke}])
+(def eg-receipt
+  [{:name "beans"  :quantity 3   :unit "item" :price-per-unit 0.5}
+   {:name "coke"   :quantity 1   :unit "item" :price-per-unit 0.7}
+   {:name "onions" :quantity 0.2 :unit "kg"   :price-per-unit 1.99}])
+
+(defn form-receipt
+  [basket]
+  (mapv #(do {:name (name %)
+              :quantity (% basket)
+              :unit (:unit (% prices))
+              :price-per-unit (:price-per-unit (% prices))})
+        (keys basket)))
 
 (defn price-of-item
   [item]
-  (* (get prices (:name item)) (:quantity item)))
+  (* (:quantity item) (:price-per-unit item)))
 
-(defn price-of-basket
+(defn price-of-receipt
   [receipt]
   (->> receipt
        (map price-of-item)
