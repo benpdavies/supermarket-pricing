@@ -6,6 +6,11 @@
   [& args]
   (println "Hello, World!"))
 
+(defn round
+  [d]
+  (let [factor (Math/pow 10 2)]
+    (/ (Math/round (* d factor)) factor)))
+
 (def prices
   {:beans  {:unit "tin"
             :price-per-unit 0.50}
@@ -16,30 +21,55 @@
 
 (def eg-basket
   {:beans  3
-   :coke   1
+   :coke   3
    :onions 0.2})
 
 (def eg-receipt
-  [{:name "beans"  :quantity 3   :unit "item" :price-per-unit 0.5}
-   {:name "coke"   :quantity 1   :unit "item" :price-per-unit 0.7}
-   {:name "onions" :quantity 0.2 :unit "kg"   :price-per-unit 1.99}])
+  {:items  [{:name "beans"  :quantity 4   :unit "item" :price-per-unit 0.5}
+            {:name "coke"   :quantity 5   :unit "item" :price-per-unit 0.7}
+            {:name "onions" :quantity 0.2 :unit "kg"   :price-per-unit 1.99}]
+   :offers [{:type "fixed-price" :item "coke" :quantity 2 :price 1}]})
+
+(defn offer-fixed-price
+  [item quantity price]
+  {:type "fixed-price"
+   :item item
+   :quantity quantity
+   :price price})
 
 (defn form-receipt
-  [basket]
-  (mapv #(do {:name (name %)
-              :quantity (% basket)
-              :unit (:unit (% prices))
-              :price-per-unit (:price-per-unit (% prices))})
-        (keys basket)))
+  [basket & offers]
+  {:items (mapv #(do {:name (name %)
+                      :quantity (% basket)
+                      :unit (:unit (% prices))
+                      :price-per-unit (:price-per-unit (% prices))})
+                (keys basket))
+   :offers (vec offers)})
 
 (defn price-of-item
   [item]
   (* (:quantity item) (:price-per-unit item)))
 
+(defn savings-fixed-price
+  [items {:keys [item quantity price]}]
+  (let [order     (first (filter #(= item (:name %)) items))
+        og-price  (round (* (:quantity order) (:price-per-unit order)))
+        new-price (round (+ (* (:price-per-unit order) (mod (:quantity order) quantity))
+                            (* price (int (/ (:quantity order) quantity)))))]
+    (round (- og-price new-price))))
+
+(defn calculate-savings
+  [{:keys [items offers]}]
+  (apply + (for [{:keys [type] :as offer} offers]
+             (case type
+               "fixed-price" (savings-fixed-price items offer)
+               :else 0))))
+
 (defn price-of-receipt
   [receipt]
-  (->> receipt
-       (map price-of-item)
-       (apply +)
-       (format "%.2f")
-       (str "£")))
+  (let [sub-total (->> (:items receipt)
+                       (map price-of-item)
+                       (apply +)
+                       round)
+        savings   (calculate-savings receipt)]
+    (str "£" (format "%.2f" (- sub-total savings)))))
