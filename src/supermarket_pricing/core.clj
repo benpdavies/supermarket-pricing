@@ -32,9 +32,10 @@
 ;; 'offers' - the offers associated with the receipt
 (def eg-receipt
   {:items  [{:name "beans"  :quantity 4   :unit "item" :price-per-unit 0.5}
-            {:name "coke"   :quantity 5   :unit "item" :price-per-unit 0.7}
-            {:name "onions" :quantity 0.2 :unit "kg"   :price-per-unit 1.99}]
-   :offers [{:type "fixed-price" :item "coke" :quantity 2 :price 1}]})
+            {:name "coke"   :quantity 2   :unit "item" :price-per-unit 0.7}
+            {:name "onions" :quantity 0.7 :unit "kg"   :price-per-unit 1.99}]
+   :offers [{:type "x-for-y" :item "beans" :x 3 :y 2}
+            {:type "fixed-price" :item "coke" :quantity 2 :price 1}]})
 
 ;; Function to form a receipt made up of information from:
 ;; - prices database
@@ -49,7 +50,7 @@
                 (keys basket))
    :offers (vec offers)})
 
-;; Representation of a fixed price offer: "Get :quantity :item for :price pounds."
+;; Representation of a fixed-price offer: "Get :quantity :item for :price pounds."
 (defn offer-fixed-price
   [item quantity price]
   {:type "fixed-price"
@@ -57,15 +58,23 @@
    :quantity quantity
    :price price})
 
+;; Representation of an x-for-y offer: ":x units of :item for the price of :y"
+(defn offer-x-for-y
+  [item x y]
+  {:type "x-for-y"
+   :item item
+   :x x
+   :y y})
+
 ;; Calculate price of an item in the :items section of receipt
 (defn price-of-item
   [item]
   (* (:quantity item) (:price-per-unit item)))
 
-;; Function to calculate the saving associated with a fixed price offer:
-;; 1. Find the appropriate item for that offer
+;; Function to calculate the saving associated with a fixed-price offer:
+;; 1. Find the appropriate order for that offer
 ;; 2. Calculate the original price (as if the offer didn't exist)
-;; 3. Calculate the reduced price including the offer
+;; 3. Calculate the reduced price including the fixed-price offer
 ;; 4. Find the difference
 (defn savings-fixed-price
   [items {:keys [item quantity price]}]
@@ -75,13 +84,27 @@
                             (* price (int (/ (:quantity order) quantity)))))]
     (round (- og-price new-price))))
 
+;; Function to calculate the saving associated with a x-for-y offer:
+;; 1. Find the appropriate order for that offer
+;; 2. Calculate the original price (as if the offer didn't exist)
+;; 3. Calculate the reduced price including the x-for-y offer
+;; 4. Find the difference
+(defn savings-x-for-y
+  [items {:keys [item x y]}]
+  (let [order     (first (filter #(= item (:name %)) items))
+        og-price  (round (* (:quantity order) (:price-per-unit order)))
+        new-price (round (+ (* (:price-per-unit order) (mod (:quantity order) x))
+                            (* (* y (:price-per-unit order)) (int (/ (:quantity order) x)))))]
+    (round (- og-price new-price))))
+
 ;; Function to calculate the total of all the different savings associated with the offers in the receipt
 (defn calculate-savings
   [{:keys [items offers]}]
   (apply + (for [{:keys [type] :as offer} offers]
              (case type
                "fixed-price" (savings-fixed-price items offer)
-               :else 0))))
+               "x-for-y"     (savings-x-for-y items offer)
+               :else         0))))
 
 ;; Function to find the final receipt price: sub-total - savings
 (defn price-of-receipt
