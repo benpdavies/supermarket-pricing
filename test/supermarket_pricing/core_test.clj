@@ -35,6 +35,18 @@
    :offers [{:type "fixed-price" :item "coke" :quantity 2 :price 1}
             {:type "x-for-y" :item "beans" :x 3 :y 2}]})
 
+(def test-receipt-all-offers
+  {:items  [{:name "beans"  :quantity 4   :unit "tin" :price-per-unit 0.5}
+            {:name "coke"   :quantity 2   :unit "can" :price-per-unit 0.7}
+            {:name "onions" :quantity 0.7 :unit "kg"   :price-per-unit 1.99}
+            {:name "ale1"   :quantity 1   :unit "bottle" :price-per-unit 3}
+            {:name "ale2"   :quantity 2   :unit "bottle" :price-per-unit 3}
+            {:name "ale3"   :quantity 2   :unit "bottle" :price-per-unit 3}
+            {:name "ale4"   :quantity 1   :unit "bottle" :price-per-unit 3}]
+   :offers [{:type "fixed-price" :item "coke" :quantity 2 :price 1}
+            {:type "x-for-y" :item "beans" :x 3 :y 2}
+            {:type "set-for-fixed-price" :item  #{"ale1" "ale2" "ale3"} :quantity 3 :price 6}]})
+
 (deftest receipt-is-formed-correctly
   (testing "Form empty receipt"
     (is (= test-receipt-empty (form-receipt {}))))
@@ -58,4 +70,6 @@
   (testing "Price of receipt with x-for-y offer"
     (is (= "£4.29" (price-of-receipt test-receipt-x-for-y-offer))))
   (testing "Price of receipt with multiple offers"
-    (is (= "£3.89" (price-of-receipt test-receipt-multiple-offers)))))
+    (is (= "£3.89" (price-of-receipt test-receipt-multiple-offers))))
+  (testing "Price of receipt with all offers"
+    (is (= "£18.89" (price-of-receipt test-receipt-all-offers)))))

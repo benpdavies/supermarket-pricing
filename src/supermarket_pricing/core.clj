@@ -19,23 +19,40 @@
    :coke   {:unit "can"
             :price-per-unit 0.70}
    :onions {:unit "kg"
-            :price-per-unit 1.99}})
+            :price-per-unit 1.99}
+   :ale1   {:unit "bottle"
+            :price-per-unit 3}
+   :ale2   {:unit "bottle"
+            :price-per-unit 3}
+   :ale3   {:unit "bottle"
+            :price-per-unit 3}
+   :ale4   {:unit "bottle"
+            :price-per-unit 3}})
 
 ;; Example of a basket represented in a map data structure
 (def eg-basket
   {:beans  3
    :coke   3
-   :onions 0.2})
+   :onions 0.2
+   :ale1   1
+   :ale2   2
+   :ale3   2
+   :ale4   1})
 
-;; Example of a receipt represented in a map with two keys:
+;; Example of a receipt created by 'form-receipt' represented in a map with two keys:
 ;; 'items'  - the items in the basket
 ;; 'offers' - the offers associated with the receipt
 (def eg-receipt
-  {:items  [{:name "beans"  :quantity 4   :unit "item" :price-per-unit 0.5}
-            {:name "coke"   :quantity 2   :unit "item" :price-per-unit 0.7}
-            {:name "onions" :quantity 0.7 :unit "kg"   :price-per-unit 1.99}]
-   :offers [{:type "x-for-y" :item "beans" :x 3 :y 2}
-            {:type "fixed-price" :item "coke" :quantity 2 :price 1}]})
+  {:items  [{:name "beans"  :quantity 4   :unit "item"   :price-per-unit 0.5}
+            {:name "coke"   :quantity 2   :unit "item"   :price-per-unit 0.7}
+            {:name "onions" :quantity 0.7 :unit "kg"     :price-per-unit 1.99}
+            {:name "ale1"   :quantity 1   :unit "bottle" :price-per-unit 3}
+            {:name "ale2"   :quantity 2   :unit "bottle" :price-per-unit 3}
+            {:name "ale3"   :quantity 2   :unit "bottle" :price-per-unit 3}
+            {:name "ale4"   :quantity 1   :unit "bottle" :price-per-unit 3}]
+   :offers [{:type "x-for-y"             :item "beans"                 :x 3        :y 2}
+            {:type "fixed-price"         :item "coke"                  :quantity 2 :price 1}
+            {:type "set-for-fixed-price" :item #{"ale1" "ale2" "ale3"} :quantity 3 :price 6}]})
 
 ;; Function to form a receipt made up of information from:
 ;; - prices database
@@ -66,6 +83,14 @@
    :x x
    :y y})
 
+;; Representation of a set-for-fixed-price offer: ":quantity units in set :offer-set for the price of :price"
+(defn offer-set-for-fixed-price
+  [item quantity price]
+  {:type "set-for-fixed-price"
+   :item item
+   :quantity quantity
+   :price price})
+
 ;; Calculate price of an item in the :items section of receipt
 (defn price-of-item
   [item]
@@ -84,6 +109,22 @@
                             (* price (int (/ (:quantity order) quantity)))))]
     (round (- og-price new-price))))
 
+;; Function to calculate the saving associated with a fixed-price offer:
+;; 1. Find the appropriate order for that offer
+;; 2. Calculate the original price (as if the offer didn't exist)
+;; 3. Calculate the reduced price including the fixed-price offer
+;; 4. Find the difference
+(defn savings-set-for-fixed-price
+  [items {:keys [item quantity price] :as offer}]
+
+  (let [order     (filter #(item (:name %)) items)
+        og-price  (apply + (map #(round (* (:quantity %) (:price-per-unit %))) order))
+        set-quantity (apply + (map :quantity order))
+        set-price    (:price-per-unit (first order))
+        new-price (round (+ (* set-price (mod set-quantity quantity))
+                            (* price (int (/ set-quantity quantity)))))]
+    (round (- og-price new-price))))
+
 ;; Function to calculate the saving associated with a x-for-y offer:
 ;; 1. Find the appropriate order for that offer
 ;; 2. Calculate the original price (as if the offer didn't exist)
@@ -98,13 +139,14 @@
     (round (- og-price new-price))))
 
 ;; Function to calculate the total of all the different savings associated with the offers in the receipt
-(defn calculate-savings
+(defn calculate-all-savings
   [{:keys [items offers]}]
   (apply + (for [{:keys [type] :as offer} offers]
              (case type
-               "fixed-price" (savings-fixed-price items offer)
-               "x-for-y"     (savings-x-for-y items offer)
-               :else         0))))
+               "set-for-fixed-price" (savings-set-for-fixed-price items offer)
+               "fixed-price"         (savings-fixed-price items offer)
+               "x-for-y"             (savings-x-for-y items offer)
+               :else                 0))))
 
 ;; Function to find the final receipt price: sub-total - savings
 (defn price-of-receipt
@@ -113,5 +155,5 @@
                        (map price-of-item)
                        (apply +)
                        round)
-        savings   (calculate-savings receipt)]
+        savings   (calculate-all-savings receipt)]
     (str "£" (format "%.2f" (- sub-total savings)))))
