@@ -7,9 +7,9 @@
   (println "Hello, World!"))
 
 (def prices
-  {:beans  {:unit "item"
+  {:beans  {:unit "tin"
             :price-per-unit 0.50}
-   :coke   {:unit "item"
+   :coke   {:unit "can"
             :price-per-unit 0.70}
    :onions {:unit "kg"
             :price-per-unit 1.99}})
