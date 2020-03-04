@@ -157,3 +157,16 @@
                        round)
         savings   (calculate-all-savings receipt)]
     (str "£" (format "%.2f" (- sub-total savings)))))
+
+(defn process-receipt
+  "Function to show the final receipt"
+  [receipt]
+  (let [sub-total (->> (:items receipt)
+                       (map price-of-item)
+                       (apply +)
+                       round)
+        savings   (calculate-all-savings receipt)
+        total     (- sub-total savings)]
+    (assoc receipt :prices {:sub-total (str "£" (format "%.2f" sub-total))
+                            :total-savings (str "£" (format "%.2f" savings))
+                            :total-to-pay (str "£" (format "%.2f" total))})))
