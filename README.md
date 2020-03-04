@@ -42,8 +42,8 @@ To view the processed receipt with associated prices and savings:
 
 ## Limitations and Improvements
 
-FIXME: listing of options this app accepts.
+There is no automatic checking of schema in this model. If a user were to use a basket that wasn't a map it would throw a non-descript error. To improve `prismatic-schema` could be used in order to define schemas for the input basket and prices database.
 
-## Examples
+Currently the savings for each individual offer are not stored, only the sum of all the offers. To improve this, the offers in the receipt could have their respective sacvings associated with them inside the processed receipt.
 
-...
+For the `set-for-fixed-price` offer, the savings is calculated from the price of the first one with assumption all the items in the set are the same price. If the set has items of a different price then the offer function will need to be changed to find the minimum saving within the set.
